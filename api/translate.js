@@ -59,14 +59,16 @@ export default async function handler(req, res) {
         const direction = apiResult.translation_direction || "Unknown";
         const original = apiResult.original_text || text;
         
-        await db.collection('translator_logs').add({
+        const docRef = await db.collection('translator_logs').add({
            Timestamp: timestamp,
            Direction: direction,
            "Detected Language": detected,
            "Original Text": original,
-           "Translated Text": translation
+           "Translated Text": translation,
+           Review: "Pending"
         });
-        console.log("Successfully pushed to Firestore!");
+        apiResult.doc_id = docRef.id;
+        console.log("Successfully pushed to Firestore! Doc ID:", docRef.id);
     } catch(logError) {
         console.error("Failed to log to Firestore:", logError);
     }

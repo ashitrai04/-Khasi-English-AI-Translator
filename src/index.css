@@ -240,6 +240,16 @@ label.form-label {
     color: var(--orange);
     border: 1px solid rgba(251, 146, 60, 0.3);
 }
+.badge.success {
+    background: rgba(52, 211, 153, 0.15);
+    color: var(--green);
+    border: 1px solid rgba(52, 211, 153, 0.3);
+}
+.badge.danger {
+    background: rgba(248, 113, 113, 0.15);
+    color: var(--red);
+    border: 1px solid rgba(248, 113, 113, 0.3);
+}
 
 .company-footer {
     text-align: center;

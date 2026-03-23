@@ -11,6 +11,9 @@ export default function App() {
   const [isTranslating, setIsTranslating] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
+  const [docId, setDocId] = useState(null);
+  const [reviewStatus, setReviewStatus] = useState("");
+
   const [adminUserInput, setAdminUserInput] = useState("Ashit");
   const [adminPassInput, setAdminPassInput] = useState("");
   const [isAdminAuthed, setIsAdminAuthed] = useState(() => sessionStorage.getItem(ADMIN_SESSION_KEY) === "1");
@@ -38,10 +41,29 @@ export default function App() {
 
       setTranslatedText(data.translated_text || "");
       setDetectedLang(data.detected_language || "Unknown");
+      setDocId(data.doc_id || null);
+      setReviewStatus(data.doc_id ? "pending" : "");
     } catch (err) {
       setErrorMsg(err.message);
     } finally {
       setIsTranslating(false);
+    }
+  }
+
+  async function submitReview(reviewValue) {
+    if (!docId) return;
+    setReviewStatus("submitting");
+    try {
+      const res = await fetch(`${API_BASE}/api/review`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ doc_id: docId, review: reviewValue }),
+      });
+      if (res.ok) setReviewStatus("done");
+      else setReviewStatus("pending");
+    } catch (err) {
+      console.error(err);
+      setReviewStatus("pending");
     }
   }
 
@@ -145,6 +167,18 @@ export default function App() {
                   Detected: <strong>{detectedLang}</strong>
                 </p>
               )}
+              {docId && reviewStatus === "pending" && (
+                <div style={{marginTop: 16, padding: "16px", background: "rgba(255,255,255,0.02)", borderRadius: "8px", border: "1px solid rgba(255,255,255,0.05)"}}>
+                  <p style={{marginBottom: 10, fontSize: "0.9rem", color: "var(--text-muted)"}}>Rate this translation (helps improve the model):</p>
+                  <div style={{display: "flex", gap: 10, flexWrap: "wrap"}}>
+                    <button className="btn btn-ghost btn-sm" style={{borderColor: "var(--green)", color: "var(--green)"}} onClick={() => submitReview("Correct")}>✅ Correct</button>
+                    <button className="btn btn-ghost btn-sm" style={{borderColor: "var(--orange)", color: "var(--orange)"}} onClick={() => submitReview("Few words incorrect")}>⚠️ Few words incorrect</button>
+                    <button className="btn btn-ghost btn-sm" style={{borderColor: "var(--red)", color: "var(--red)"}} onClick={() => submitReview("Incorrect")}>❌ Incorrect</button>
+                  </div>
+                </div>
+              )}
+              {reviewStatus === "submitting" && <p className="status" style={{textAlign: "left", marginTop: 16}}>Submitting feedback...</p>}
+              {reviewStatus === "done" && <p className="status success" style={{textAlign: "left", marginTop: 16}}>Thank you for your feedback!</p>}
             </div>
           </div>
         </main>
@@ -195,11 +229,12 @@ export default function App() {
                         <th>Detected Lang</th>
                         <th>Original Text</th>
                         <th>Translated Text</th>
+                        <th>Review</th>
                       </tr>
                     </thead>
                     <tbody>
                       {adminLogs.length === 0 ? (
-                        <tr><td colSpan="5" style={{textAlign: "center", padding: 20}}>No logs found in GCS. Submit a translation first!</td></tr>
+                        <tr><td colSpan="6" style={{textAlign: "center", padding: 20}}>No logs found in Firestore. Submit a translation first!</td></tr>
                       ) : (
                         adminLogs.map((log, i) => (
                           <tr key={i}>
@@ -208,6 +243,11 @@ export default function App() {
                             <td>{log["Detected Language"]}</td>
                             <td className="wrap">{log["Original Text"]}</td>
                             <td className="wrap">{log["Translated Text"]}</td>
+                            <td>
+                              <span className={`badge ${log.Review === "Correct" ? "success" : log.Review === "Incorrect" ? "danger" : "pending"}`}>
+                                {log.Review || "Pending"}
+                              </span>
+                            </td>
                           </tr>
                         ))
                       )}
