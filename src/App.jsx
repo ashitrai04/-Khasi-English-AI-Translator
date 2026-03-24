@@ -14,6 +14,10 @@ export default function App() {
   const [docId, setDocId] = useState(null);
   const [reviewStatus, setReviewStatus] = useState("");
 
+  const [chatInput, setChatInput] = useState("");
+  const [chatHistory, setChatHistory] = useState([]);
+  const [isChatting, setIsChatting] = useState(false);
+
   const [adminUserInput, setAdminUserInput] = useState("Ashit");
   const [adminPassInput, setAdminPassInput] = useState("");
   const [isAdminAuthed, setIsAdminAuthed] = useState(() => sessionStorage.getItem(ADMIN_SESSION_KEY) === "1");
@@ -47,6 +51,30 @@ export default function App() {
       setErrorMsg(err.message);
     } finally {
       setIsTranslating(false);
+    }
+  }
+
+  async function handleSendChat() {
+    if (!chatInput.trim()) return;
+    const userMsg = chatInput.trim();
+    setChatInput("");
+    setChatHistory(prev => [...prev, { role: "user", content: userMsg }]);
+    setIsChatting(true);
+    
+    try {
+      const res = await fetch(`${API_BASE}/api/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: userMsg, direction: "en2kha" }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Chat failed");
+
+      setChatHistory(prev => [...prev, { role: "bot", content: data.reply || "No reply." }]);
+    } catch (err) {
+      setChatHistory(prev => [...prev, { role: "bot", content: `❌ Error: ${err.message}` }]);
+    } finally {
+      setIsChatting(false);
     }
   }
 
@@ -179,6 +207,57 @@ export default function App() {
               )}
               {reviewStatus === "submitting" && <p className="status" style={{textAlign: "left", marginTop: 16}}>Submitting feedback...</p>}
               {reviewStatus === "done" && <p className="status success" style={{textAlign: "left", marginTop: 16}}>Thank you for your feedback!</p>}
+            </div>
+          </div>
+
+          {/* CHAT BOT SECTION */}
+          <div className="card" style={{marginTop: 24}}>
+            <h2 className="card-title">Bilingual Chat Assistant</h2>
+            <p className="status" style={{textAlign:"left", margin: "0 0 16px 0"}}>Have a conversational chat in English or Khasi.</p>
+            
+            <div className="chat-history" style={{background: "rgba(255,255,255,0.03)", padding: 16, borderRadius: 12, minHeight: 200, maxHeight: 400, overflowY: "auto", marginBottom: 16, border: "1px solid rgba(255,255,255,0.1)"}}>
+              {chatHistory.length === 0 && (
+                <p style={{color: "var(--muted)", textAlign: "center", marginTop: 80}}>Say hello to start the conversation!</p>
+              )}
+              {chatHistory.map((msg, i) => (
+                <div key={i} style={{display: "flex", justifyContent: msg.role === "user" ? "flex-end" : "flex-start", marginBottom: 12}}>
+                  <div style={{
+                    maxWidth: "80%",
+                    padding: "10px 14px",
+                    borderRadius: "16px",
+                    borderBottomRightRadius: msg.role === "user" ? "4px" : "16px",
+                    borderBottomLeftRadius: msg.role === "bot" ? "4px" : "16px",
+                    background: msg.role === "user" ? "var(--primary)" : "rgba(255,255,255,0.1)",
+                    color: "white",
+                    boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
+                    whiteSpace: "pre-wrap"
+                  }}>
+                    {msg.content}
+                  </div>
+                </div>
+              ))}
+              {isChatting && (
+                <div style={{display: "flex", justifyContent: "flex-start", marginBottom: 12}}>
+                  <div style={{padding: "10px 14px", borderRadius: "16px", background: "rgba(255,255,255,0.1)", color: "var(--muted)"}}>
+                    typing...
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div style={{display: "flex", gap: 10}}>
+              <input 
+                type="text" 
+                className="input" 
+                value={chatInput} 
+                onChange={(e) => setChatInput(e.target.value)} 
+                onKeyDown={(e) => e.key === 'Enter' && handleSendChat()}
+                placeholder="Type your message..."
+                style={{flex: 1}}
+              />
+              <button className="btn btn-primary" onClick={handleSendChat} disabled={isChatting || !chatInput.trim()}>
+                Send
+              </button>
             </div>
           </div>
         </main>

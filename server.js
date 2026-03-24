@@ -18,11 +18,13 @@ async function serve() {
 
   // Dynamically import the API handlers (which are ES modules)
   const translateHandler = (await import('./api/translate.js')).default;
+  const chatHandler = (await import('./api/chat.js')).default;
   const adminLogsHandler = (await import('./api/admin_logs.js')).default;
   const reviewHandler = (await import('./api/review.js')).default;
 
   // Make them accessible locally exactly as they would be on Vercel
   app.post('/api/translate', (req, res) => translateHandler(req, res));
+  app.post('/api/chat', (req, res) => chatHandler(req, res));
   app.post('/api/admin_logs', (req, res) => adminLogsHandler(req, res));
   app.post('/api/review', (req, res) => reviewHandler(req, res));
 
